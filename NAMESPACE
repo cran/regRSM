@@ -1,0 +1,15 @@
+S3method(ImpPlot,regRSM)
+S3method(plot,regRSM)
+S3method(predict,regRSM)
+S3method(print,regRSM)
+S3method(validate,regRSM)
+S3method(summary,regRSM)
+S3method(roc,regRSM)
+
+export(ImpPlot,
+regRSM,
+regRSM.default,
+validate,
+roc
+)
+
