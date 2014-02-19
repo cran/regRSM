@@ -1,4 +1,4 @@
-1fd99c5195ae50f385ab7ce367ad9079 *DESCRIPTION
+70d26be21c16a715e549b6b06f00666d *DESCRIPTION
 4b0da1f9f1428a920162a1b4e9089bb7 *NAMESPACE
 edf9a808cbcc57c9b14a719153fdd51f *R/parallelRSM.R
 82bd6c9e5e8afb2f1f210a9b21710cf1 *R/regRSM.r
@@ -6,7 +6,7 @@ e7905f8120e658045c3522e313736b99 *man/ImpPlot.regRSM.Rd
 e3eb18927c19ca77b98b83ab8ce4058a *man/plot.regRSM.Rd
 0f67b2b7db3d773331e7b03b33f4d8f5 *man/predict.regRSM.Rd
 430bc2f8871934e14151ba0c610b35d6 *man/print.regRSM.rd
-7cd39b610e3c1c0e62b71eeb7495eae7 *man/regRSM.Rd
+011db9d443e9673e42799a4b4162c44e *man/regRSM.Rd
 941c11880c9560bbd5cfda2f721a396c *man/roc.regRSM.rd
 13d9b3766a498c16deeb6760782c0b20 *man/summary.regRSM.rd
 7f40b368c244ad54cb99e187435014d8 *man/validate.regRSM.rd

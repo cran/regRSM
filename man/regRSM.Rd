@@ -91,6 +91,124 @@ When \code{parallel=MPI} then MPI parallel implementation is used. This parallel
 \code{regRSM} function in parallel mode does not close created \code{slaves}, because creation and destruction of slaves is usually very time consuming. Next parallel call will reuse existing \code{slave} processes. If you want change number of \code{slaves} please execute \code{mpi.close.Rslaves()} and then call function \code{regRSM} with new parameter \code{nslaves}.
 If you don't want to use parallel computations any more remember to close MPI framework by calling \code{mpi.close.Rslaves()}.
 
+Installing MPI for multiple machines:
+
+In the following we give some guidelines how to install and configure MPI framework on multiple machines.
+MPI configuration on multiple machines is straightforward. Each machine must be connected to the main machine (master). While using \pkg{Rmpi} package we must remember that it works a little bit different than typical C MPI application. Usually master process transfers through MPI the whole application and replicates it on available slots (slaves). \pkg{Rmpi} uses existing R installation, so on each machine all required packages must be installed. Only R source code and data are transferred. 
+We present the required steps under Ubuntu operating system (we use Ubuntu 12.04 LTS version).
+To install Open MPI on Ubuntu type:
+
+\code{
+sudo apt-get install libopenmpi-dev openmpi-bin
+}
+
+On Ubuntu with installed Open MPI and R one may just run R and type: 
+
+\code{
+install.packages("Rmpi")
+}
+
+Consider a case when we have several (2 or more) machines with Ubuntu 12.04 LTS operating system, R 3.0, \pkg{Rmpi} and \pkg{regRSM} installed and all machines are connected to the same network. Moreover let's assume we have one network card which is mapped to \code{eth0}. With command \code{ifconfig} we can check what ip addresses our machines have. For simplicity, to avoid changing the configuration, we assign a static address to each machine.
+In our network we have 4 PCs with 4 core processor each. We give them the following names and ip addresses: 
+
+\code{
+node09: 10.200.1.159
+}
+
+\code{
+node08: 10.200.1.158
+}
+
+\code{
+node07: 10.200.1.157
+}
+
+\code{
+node06: 10.200.1.156
+}
+
+We create text file with ip and number of slots in each line. Slot is an instance of our application working in a slave mode. For example if we have a line \code{127.0.0.1 slots=4} then on our machine (localhost) MPI should run up to 4 slave processes. If we request more slaves than slots then  there will be oversubscription of the node and the performance can drop. We can limit the number of slots to 4 by changing the line to \code{127.0.0.1 slots=4 max_slots=4}. In this case request on more than 4 processes on this node will result in an error. While setting hard limits one should remember that the total number of processes created by \pkg{Rmpi} package is equal to the number of slaves plus one (master process). For example if we want each computer to run 4 parallel tasks then we assign 4 slots to each machine. 
+Example of our hostfile \code{myhosts}:
+
+\code{
+10.200.1.159 slots=4
+}
+
+\code{
+10.200.1.157 slots=4
+}
+
+\code{
+10.200.1.158 slots=4
+}
+
+\code{
+10.200.1.156 slots=4
+}
+
+We run MPI application by executing:
+
+\code{
+mpiexec -n <no_of_program_copies> -hosts <file_with_hosts> <program_name>
+}
+
+Parameter \code{-n} can be misleading when working with \code{Rmpi} package. We want to start one R instance on which we run our experiment. Thus this value should be set to 1. 
+To give \pkg{Rmpi} our hostfile just run command: 
+
+\code{mpiexec -n 1 -hostfile myhosts R --no-save}
+
+which means we run one \code{Rscript} process with given hostfile for MPI configuration. In R terminal we type:
+
+\code{
+> library(Rmpi)
+}
+
+\code{
+library(Rmpi)
+}
+
+\code{
+> mpi.spawn.Rslaves()
+}
+
+\code{
+mpi.spawn.Rslaves()
+}
+
+\code{
+    16 slaves are spawned successfully. 0 failed.
+}
+
+\code{    
+master  (rank 0 , comm 1) of size 17 is running on: node09
+}
+
+\code{
+slave1  (rank 1 , comm 1) of size 17 is running on: node09
+}
+
+\code{
+slave2  (rank 2 , comm 1) of size 17 is running on: node09
+}
+
+\code{
+slave3  (rank 3 , comm 1) of size 17 is running on: node09
+}
+
+\code{
+... ... ...
+}
+
+\code{
+slave15 (rank 15, comm 1) of size 17 is running on: node06
+}
+
+\code{
+slave16 (rank 16, comm 1) of size 17 is running on: node09
+}
+
+The above lines indicate that all MPI processes are launched successfully. 
+
 }
 \value{
 %%  ~Describe the value returned
