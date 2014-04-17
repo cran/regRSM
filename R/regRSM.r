@@ -190,10 +190,11 @@ new.regRSM <- function()
     return(regRSM)
 }
 
-regRSM = function(y,x,yval,xval,m,B, parallel,nslaves,store_data,screening,init_weights,useGIC,thrs,penalty) UseMethod("regRSM")
+#regRSM = function(x,y,yval,xval,m,B, parallel,nslaves,store_data,screening,init_weights,useGIC,thrs,penalty) UseMethod("regRSM")
+regRSM = function(x,...) UseMethod("regRSM")
 
-regRSM.default = function(y,x,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",nslaves=c(4),
-								store_data=FALSE,screening=NULL,init_weights=FALSE,useGIC=TRUE,thrs=NULL,penalty=NULL)
+regRSM.default = function(x,y,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",nslaves=c(4),
+								store_data=FALSE,screening=NULL,init_weights=FALSE,useGIC=TRUE,thrs=NULL,penalty=NULL,...)
 {
     data_x = x;
     x = as.matrix(x)
@@ -335,9 +336,24 @@ regRSM.default = function(y,x,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",n
     regRSM$control$B = B
     
     print(regRSM)
-    
     return(regRSM)
 }
+
+regRSM.formula <- function(formula, data=NULL, ...)
+{
+  mf = model.frame(formula,data)
+  x = model.matrix(attr(mf, "terms"), data=mf)
+  #Remove column corresponding to the intercept
+  x = as.matrix(x[,-1])
+  y = as.numeric(model.response(mf))
+  est = regRSM(x, y, ...)
+  cl = match.call()
+  est$call = cl
+  est$formula = formula
+  return(est)
+}  
+
+
 
 predict.regRSM = function(object,xnew,...){
     if(is.null(object$coefficients)) stop("The final model is not selected!")

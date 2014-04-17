@@ -9,6 +9,7 @@ S3method(roc,regRSM)
 export(ImpPlot,
 regRSM,
 regRSM.default,
+regRSM.formula,
 validate,
 roc
 )

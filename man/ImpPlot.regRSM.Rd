@@ -36,7 +36,7 @@ for(j in 1:p){
 }
 y = x \%*\% beta1 + rnorm(n)
 
-p1=regRSM(y,x)
+p1=regRSM(x,y)
 ImpPlot(p1)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

@@ -1,5 +1,6 @@
 \name{regRSM}
 \alias{regRSM.default}
+\alias{regRSM.formula}
 \alias{regRSM}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
@@ -10,12 +11,19 @@ Performs Random Subspace Method (RSM) for high-dimensional linear regression to 
 The final model is chosen based on validation set or Generalized Information Criterion.
 }
 \usage{
-regRSM(y, x, yval, xval, m, B, parallel, nslaves, store_data, screening,
-init_weights, useGIC, thrs, penalty)
+\method{regRSM}{formula}(formula, data=NULL, ...)
+\method{regRSM}{default}(x, y, yval, xval, m, B, parallel, nslaves, store_data, screening,
+init_weights, useGIC, thrs, penalty,...)
 }
 
 %- maybe also 'usage' for other objects documented here.
 \arguments{
+  \item{formula}{
+Formula describing the model to be fitted.
+}
+  \item{data}{
+Data frame containing the variables in the model
+}
   \item{y}{
 Quatitative response vector of length \eqn{n}, where \eqn{n} is a number of observations.
 }
@@ -66,6 +74,9 @@ if \eqn{p>n/2}.
 }
   \item{penalty}{
 Penalty in Generalized Information Criterion (GIC). Default is \eqn{log(n)} which corresponds to Bayesian Information Criterion (BIC).
+}
+  \item{...}{
+other arguments not available now.
 }
 }
 \details{
@@ -237,8 +248,8 @@ Pawel Teisseyre, Robert A. Klopotek.
 \code{predict}, \code{plot}, \code{ImpPlot}, \code{validate}, \code{roc} methods.
 }
 \examples{
-p = 100
-n = 100
+p = 500
+n = 50
 beta1 = numeric(p)
 beta1[c(1,5,10)] = c(1,1,1)  
 x = matrix(0,ncol=p,nrow=n)
@@ -248,7 +259,10 @@ for(j in 1:p){
     xtest[,j] = rnorm(n,0,1)    
 }
 y = x \%*\% beta1 + rnorm(n)
-p1 = regRSM(y,x)
+p1 = regRSM(x,y)
+
+data1 = data.frame(y,x)
+p2 = regRSM(y~.,data=data1)
 }
 \keyword{Model}
 

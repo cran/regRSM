@@ -50,7 +50,7 @@ for(j in 1:p){
 y = x \%*\% beta1 + rnorm(n)
 yval = xval \%*\% beta1 + rnorm(n)
 
-p1 = regRSM(y,x,store_data=TRUE)
+p1 = regRSM(x,y,store_data=TRUE)
 p2 = validate(p1,yval,xval)
 
 }

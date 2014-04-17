@@ -32,8 +32,8 @@ the minimal value of the prediction error is chosen as a final one.
 Pawel Teisseyre, Robert A. Klopotek.
 }
 \examples{
-p=100
-n=100
+p=500
+n=50
 beta1 = numeric(p)
 beta1[c(1,5,10)]=c(1,1,1)  
 x = matrix(0,ncol=p,nrow=n)
@@ -46,10 +46,10 @@ for(j in 1:p){
 y = x \%*\% beta1 + rnorm(n)
 yval = xval \%*\% beta1 + rnorm(n)
 
-p1=regRSM(y,x)
+p1=regRSM(x,y)
 plot(p1)
 
-p2 = regRSM(y,x,yval,xval,useGIC=FALSE)
+p2 = regRSM(x,y,yval,xval,useGIC=FALSE)
 plot(p2)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

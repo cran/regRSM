@@ -77,7 +77,9 @@ fitSubmodelStatic <- function(n,p,B,m,initial_weights) {
          
         taskNumber <- task$taskNumber
         print(sprintf('slave %d got job (p=%d,n=%d,B=%d) at %s',taskNumber,p,n,B, Sys.time()))
-        set.seed(taskNumber)            
+        generator <- task$generator
+        .Random.seed <- generator
+        
         taskCount <- task$taskCount 
         
         # Create vector of final scores
@@ -110,6 +112,7 @@ make_experimentStatic<-function(n,p,B,m,initial_weights)
 
 # Send the function to the slaves
 mpi.bcast.Robj2slave(fitSubmodelStatic)
+#mpi.bcast.Robj2slave(initial_seed)
 #mpi.bcast.Robj2slave(B)
 
 # Call the function in all the slaves to get them ready to
@@ -120,10 +123,21 @@ mpi.bcast.cmd(cmd=fitSubmodelStatic, n=n,p=p,B=B,m=m,initial_weights=initial_wei
 nslaves=mpi.comm.size()-1
 taskCount=floor(B/nslaves)
 tasks <- vector('list')
+
+#Create parallel random generator
+require(doParallel)
+RNGkind("L'Ecuyer-CMRG")
+set.seed(runif(1))
+s <- .Random.seed[1:6]
+
+
 for (i in 1:(nslaves-1)) {
-    tasks[[i]] <- list(taskNumber=i,taskCount=taskCount)
+    #print(s)
+    s=nextRNGStream(s)
+    tasks[[i]] <- list(taskNumber=i,taskCount=taskCount, generator=s)
     }
-tasks[[nslaves]] <- list(taskNumber=nslaves,taskCount=B-taskCount*(nslaves-1))
+s=nextRNGStream(s)
+tasks[[nslaves]] <- list(taskNumber=nslaves,taskCount=B-taskCount*(nslaves-1),  generator=s)
 #print(tasks)
 
 # Create vector of final scores
@@ -173,7 +187,6 @@ while (closed_slaves < n_slaves) {
 # Take an average of final scores
 ns=ifelse(ns!=0,ns,1)
 finalScores = finalScores/ns
-
 return(finalScores)
 }
 

@@ -58,7 +58,7 @@ for(j in 1:p){
     x[,j]=rnorm(n,0,1)
 }
 y = x \%*\% beta1 + rnorm(n)
-p1 = regRSM(y,x,store_data=TRUE)
+p1 = regRSM(x,y,store_data=TRUE)
 true = c(1,5,10)
 roc(p1,true,plotit=TRUE)
 }
