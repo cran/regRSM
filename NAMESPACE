@@ -5,6 +5,8 @@ S3method(print,regRSM)
 S3method(validate,regRSM)
 S3method(summary,regRSM)
 S3method(roc,regRSM)
+S3method(regRSM,formula)
+S3method(regRSM,default)
 
 export(ImpPlot,
 regRSM,
@@ -14,3 +16,12 @@ validate,
 roc
 )
 
+import(Rmpi)
+import(doParallel)
+import(parallel)
+import(foreach)
+importFrom("graphics", "dotchart", "legend", "plot")
+importFrom("stats", "coef", "complete.cases", "cor", "lm",
+             "model.frame", "model.matrix", "model.response", "quantile",
+             "runif")
+importFrom("utils", "installed.packages")

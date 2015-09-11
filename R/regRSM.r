@@ -1,6 +1,6 @@
 compute_initial_weights = function(y,x){
 # The function returns initial weights.
-  
+
     initial_weights = as.numeric(cor(y,x))^2
     initial_weights = initial_weights/(sum(initial_weights))
     return(initial_weights)
@@ -18,6 +18,7 @@ compute_scores = function(y,x,m,B,initial_weights=NULL){
         submodel = sample(1:p,size=m,replace=FALSE,prob=initial_weights)
         lm1 = lm(y~x[,submodel])
         weights = as.numeric((summary(lm1)$coef[-1,3])^2)
+        submodel = submodel[which(!is.na(coef(lm1)[-1]))] #UPDATE: deal with collinearity
         scores[submodel] =  scores[submodel] + weights
         ns[submodel] = ns[submodel] + 1
     }
@@ -30,15 +31,15 @@ compute_scores = function(y,x,m,B,initial_weights=NULL){
 compute_scores_parallel = function(y,x,m,B,initial_weights,nslaves){
 #This function returns RSM scores computed using parallel function foreach %dopar%.
     p = ncol(x)
-
+    requireNamespace("foreach",quietly = TRUE)
     taskCount=floor(B/nslaves)
     r1 = foreach(i = 1:(nslaves-1), .combine=cbind, .export=c("compute_scores_partial")) %dopar%{
-      
+
         scores_ns = compute_scores_partial(y,x,m,taskCount,initial_weights)
-                    
-        scores_ns  
+
+        scores_ns
     }
-            
+
     taskCount = B-taskCount*(nslaves-1)
 
     r2 = compute_scores_partial(y,x,m,taskCount,initial_weights)
@@ -55,7 +56,7 @@ compute_scores_parallel = function(y,x,m,B,initial_weights,nslaves){
 
 
 compute_scores_partial = function(y,x,m,taskCount,initial_weights){
-# The function returns RSM scores computed based on taskCount repetitions. Unlike the compute_scores this function returns concatenated vector of scores and ns. 
+# The function returns RSM scores computed based on taskCount repetitions. Unlike the compute_scores this function returns concatenated vector of scores and ns.
 
     p = ncol(x)
     scores = numeric(p)
@@ -65,6 +66,7 @@ compute_scores_partial = function(y,x,m,taskCount,initial_weights){
         submodel = sample(1:p,size=m,replace=FALSE,prob=initial_weights)
         lm1 = lm(y~x[,submodel])
         weights = as.numeric((summary(lm1)$coef[-1,3])^2)
+        submodel = submodel[which(!is.na(coef(lm1)[-1]))] #UPDATE: deal with collinearity
         scores[submodel] =  scores[submodel] + weights
         ns[submodel] = ns[submodel] + 1
     }
@@ -80,7 +82,7 @@ is.wholenumber = function(x, tol = .Machine$double.eps^0.5){
 
 select_finalmodel_bic = function(y,x,order1,thrs,penalty){
 # The function returns final model using Bayesian Information Criterion.
-  
+
     n = length(y)
     lm0 = lm(y~1)
     beta0 = as.numeric(coef(lm0))
@@ -90,15 +92,35 @@ select_finalmodel_bic = function(y,x,order1,thrs,penalty){
     xo = x[,order1[1:thrs]]
     xo = cbind(1,xo)
     xo = as.matrix(xo)
-   
+
+
+#     qr1 = qr(xo)
+#     Q = qr.Q(qr1)
+#     R = qr.R(qr1)
+#     R_inv = solve(R)
+#     tQy = t(Q) %*% y
 
     qr1 = qr(xo)
-
     Q = qr.Q(qr1)
     R = qr.R(qr1)
-    R_inv = solve(R)
- 
-    tQy = t(Q) %*% y
+    small_diag = which(abs(diag(R))<1e-7)
+    if(length(small_diag)>0){
+      #Deal with collinearities, coefficients corresponding to linearly dependent columns will be 0.
+      del = qr1$pivot[small_diag]
+      Q1 = Q[,-small_diag]
+      R1= R[-small_diag,-small_diag]
+      R1_inv = solve(R1)
+      tQy1 = t(Q1) %*% y
+      R_inv = matrix(0,ncol(xo),ncol(xo))
+      tQy = numeric(ncol(xo))
+      R_inv[-del,-del]=R1_inv
+      tQy[-del] = tQy1
+      warning("Multicollinearity in data. Only coeffients corresponding to linearly independent columns are estimated.")
+    }else{
+      R_inv = solve(R)
+      tQy = t(Q) %*% y
+    }
+
 
     betabj = vector("list",thrs)
     rssj =  numeric(thrs)
@@ -113,13 +135,13 @@ select_finalmodel_bic = function(y,x,order1,thrs,penalty){
     }
 
     bic[1] =  n*log(rssj[1]/n)+2*penalty
-  
+
     sel = which.min(bic)
     betab = as.numeric(R_inv[1:(sel+1),1:(sel+1)] %*% tQy[1:(sel+1)])
     model_sel = order1[1:sel]
-  
+
     if(bic0<bic[sel]){
-        betab = beta0    
+        betab = beta0
         model_sel = 0
     }
 
@@ -148,12 +170,32 @@ select_finalmodel_qr = function(y,x,yval,xval,order1){
     x=cbind(1,x)
     xval=cbind(1,xval)
 
-    qr1 = qr(x)
+#     qr1 = qr(x)
+#     Q = qr.Q(qr1)
+#     R = qr.R(qr1)
+#     R_inv = solve(R)
+#     tQy = t(Q) %*% y
 
-    Q = qr.Q(qr1)
-    R = qr.R(qr1)
-    R_inv = solve(R)
-    tQy = t(Q) %*% y
+      qr1 = qr(x)
+      Q = qr.Q(qr1)
+      R = qr.R(qr1)
+      small_diag = which(abs(diag(R))<1e-7)
+      if(length(small_diag)>0){
+        #Deal with collinearities, coefficients corresponding to linearly dependent columns will be 0.
+        del = qr1$pivot[small_diag]
+        Q1 = Q[,-small_diag]
+        R1= R[-small_diag,-small_diag]
+        R1_inv = solve(R1)
+        tQy1 = t(Q1) %*% y
+        R_inv = matrix(0,ncol(x),ncol(x))
+        tQy = numeric(ncol(x))
+        R_inv[-del,-del]=R1_inv
+        tQy[-del] = tQy1
+        warning("Multicollinearity in data. Only coefficients corresponding to linearly independent columns are estimated.")
+      }else{
+        R_inv = solve(R)
+        tQy = t(Q) %*% y
+      }
 
     betab = vector("list",p1)
     betab[[p1]] = R_inv %*% tQy
@@ -182,7 +224,7 @@ new.regRSM <- function()
 {
 
     regRSM=list(scores=NULL,model=NULL,time=list(user=0,system=0,elapsed=0),
-    data_transfer=list(user=0,system=0,elapsed=0), 
+    data_transfer=list(user=0,system=0,elapsed=0),
     coefficients=NULL, predError=NULL,input_data=list(x=NULL,y=NULL),
     control=list(useGIC=NULL,selval=NULL,screening=NULL,init_weights=FALSE,parallel=NULL,m=NULL,B=NULL))
 
@@ -198,13 +240,22 @@ regRSM.default = function(x,y,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",n
 {
     data_x = x;
     x = as.matrix(x)
-    y = as.numeric(y) 
-    n = length(y)  
-    p = ncol(x)                          
+    y = as.numeric(y)
+    n = length(y)
+    p = ncol(x)
     scores = NULL
 
+
     startTime <- proc.time()
-  
+
+    #Check for missing values:
+    complete_cases1 = complete.cases(x)
+    which_row_na = which(!complete_cases1)
+    if(length(which_row_na)!=0){
+      stop("Missing values in rows: ",toString(which_row_na))
+    }
+
+
     # Set default values of m and B
     if(is.null(m)){
         m = floor(min(n-1,p)/2)
@@ -219,7 +270,7 @@ regRSM.default = function(x,y,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",n
         if(B<=0) stop("Parameter B must be a positive number!")
         if(!is.wholenumber(B)) stop("Parameter B must be a whole number!")
     }
-  
+
     #Check for screeneing
     if(!is.null(screening))
     {
@@ -234,15 +285,15 @@ regRSM.default = function(x,y,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",n
     if(init_weights){
         initial_weights = compute_initial_weights(y,x)
     }else{
-        initial_weights = NULL    
-    } 
+        initial_weights = NULL
+    }
 
     #RSM method esence
     if(parallel=="MPI"){
         if("Rmpi" %in% rownames(installed.packages()) == FALSE){
                 stop("Please install package 'Rmpi' to use MPI parallel version of regRSM")
         }
-        require("Rmpi")
+        requireNamespace("Rmpi",quietly = TRUE)
         create_slaves(nslaves)
         d1=proc.time()
         send_data(y,x,m,initial_weights)
@@ -255,7 +306,8 @@ regRSM.default = function(x,y,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",n
             if("doParallel" %in% rownames(installed.packages()) == FALSE){
                 stop("Please install package 'doParallel' to use POSIX parallel version of regRSM")
             }
-            require("doParallel")
+            requireNamespace("doParallel",quietly = TRUE)
+            requireNamespace("parallel",quietly = TRUE)
             d1=proc.time()
             cl = makeCluster(nslaves)
             registerDoParallel(cl)
@@ -275,12 +327,12 @@ regRSM.default = function(x,y,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",n
         scores1 = numeric(ncol(data_x))
         scores1[sel] = scores
         scores = scores1
-    }  
-  
-  
+    }
+
+
     selval = ifelse(!is.null(yval) && !is.null(xval),TRUE,FALSE)
     if(selval) useGIC = FALSE
-  
+
     if(useGIC){
         if(is.null(penalty)){
             penalty = log(length(y))
@@ -288,18 +340,18 @@ regRSM.default = function(x,y,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",n
             if(penalty<0) stop("Penalty must be positive!")
         }
         if(is.null(thrs)){
-            thrs = ifelse(p<=floor(n/2),p,floor(n/2))    
+            thrs = ifelse(p<=floor(n/2),p,floor(n/2))
         }else{
             if(thrs>min(p,(n-2))) stop("Parameter thrs cannot be larger than min(p,(n-2))!")
             if(thrs<=1) stop("Parameter thrs must be greater than one!")
             if(!is.wholenumber(thrs)) stop("Parameter thrs must be a whole number!")
         }
-        order1 = sort(scores,decreasing=TRUE,index.return=TRUE)$ix      
+        order1 = sort(scores,decreasing=TRUE,index.return=TRUE)$ix
         selected_model = select_finalmodel_bic(y,data_x,order1,thrs,penalty)
         model = selected_model$model
-        coefficients =  as.numeric(selected_model$coefficients) 
-        predError = NULL            
-        informationCriterion = selected_model$informationCriterion                       
+        coefficients =  as.numeric(selected_model$coefficients)
+        predError = NULL
+        informationCriterion = selected_model$informationCriterion
     }else{
         if(selval==TRUE){
             order1 = sort(scores,decreasing=TRUE,index.return=TRUE)$ix
@@ -326,7 +378,7 @@ regRSM.default = function(x,y,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",n
     regRSM$informationCriterion = informationCriterion
     regRSM$data_transfer = d2-d1
     if(store_data) { regRSM$input_data$x=data_x; regRSM$input_data$y=y }
-  
+
     regRSM$control$useGIC = useGIC
     regRSM$control$selval = selval
     regRSM$control$screening = screening
@@ -334,7 +386,7 @@ regRSM.default = function(x,y,yval=NULL,xval=NULL,m=NULL,B=NULL, parallel="NO",n
     regRSM$control$parallel = parallel
     regRSM$control$m = m
     regRSM$control$B = B
-    
+
     print(regRSM)
     return(regRSM)
 }
@@ -351,7 +403,7 @@ regRSM.formula <- function(formula, data=NULL, ...)
   est$call = cl
   est$formula = formula
   return(est)
-}  
+}
 
 
 
@@ -369,13 +421,13 @@ plot.regRSM = function(x,...){
         p1 = length(object$informationCriterion)
         plot(1:p1,object$informationCriterion,type="b",xlab="Variables",ylab="Generalized Information Criterion",main="Generalized Information Criterion",...)
     }else{
-        if(!is.null(object$predError)){        
+        if(!is.null(object$predError)){
             p1 = length(object$predError)
             plot(1:p1,object$predError,type="b",xlab="Variables",ylab="Prediction Error",main="Prediction Error on Validation Set",...)
         }else{
             cat("The final model is not selected! \n")
         }
-    }    
+    }
 }
 
 
@@ -387,7 +439,7 @@ ImpPlot.default <- function(object)
 ImpPlot.regRSM = function(object){
 #The function produces dot plot showing variable importances of the variables.
 
-  if (!inherits(object, "regRSM")) 
+  if (!inherits(object, "regRSM"))
         stop("This function only works for objects of class `regRSM'")
 
   dotchart(object$scores,main="Variable Importance measure",xlab="RSM scores",ylab="Variable number")
@@ -406,18 +458,18 @@ validate.regRSM = function(object,yval,xval){
     if(is.null(object$input_data$x) || is.null(object$input_data$y)) stop('Argument store_data must be TRUE!')
 
     order1 = sort(object$scores,decreasing=TRUE,index.return=TRUE)$ix
- 
+
     selected_model = select_finalmodel_qr(object$input_data$y,object$input_data$x,yval,xval,order1)
 
     model = selected_model$model
     predError = selected_model$predError
     coefficients =  as.numeric(selected_model$coefficients)
-  
-   
+
+
     object$model=model
     object$coefficients=coefficients
     object$predError=predError
-    
+
     return(object)
 }
 
@@ -445,13 +497,13 @@ print.regRSM = function(x,...){
     }
 
     if(object$control$init_weights){
-        cat("Initial weights: yes \n")  
+        cat("Initial weights: yes \n")
     }else{
        cat("Initial weights: no \n")
     }
 
     if(object$control$parallel=="MPI" | object$control$parallel=="POSIX"){
-        cat("Version: parallel \n")  
+        cat("Version: parallel \n")
     }else{
         cat("Version: sequential \n")
     }
@@ -460,9 +512,9 @@ print.regRSM = function(x,...){
     cat("Number of simulations:", object$control$B, "\n")
 
     if(object$control$parallel=="MPI" ){
-        cat("Remember to use: 'mpi.close.Rslaves()' before terminate the current R session. \n") 
+        cat("Remember to use: 'mpi.close.Rslaves()' before terminate the current R session. \n")
     }
-   
+
 }
 
 
@@ -487,13 +539,13 @@ summary.regRSM = function(object,...){
     }
 
     if(object$control$init_weights){
-        cat("Initial weights: yes \n")  
+        cat("Initial weights: yes \n")
     }else{
        cat("Initial weights: no \n")
     }
 
     if(object$control$parallel=="MPI" | object$control$parallel=="POSIX"){
-        cat("Version: parallel \n")  
+        cat("Version: parallel \n")
     }else{
         cat("Version: sequential \n")
     }
@@ -502,7 +554,7 @@ summary.regRSM = function(object,...){
     cat("Number of simulations:", object$control$B, "\n")
 
     if(object$control$parallel=="MPI" ){
-        cat("Remember to use: 'mpi.close.Rslaves()' before terminate the current R session. \n") 
+        cat("Remember to use: 'mpi.close.Rslaves()' before terminate the current R session. \n")
     }
 
 }
@@ -518,7 +570,7 @@ roc.regRSM = function(object,truemodel,plotit=TRUE,...){
     ordering =  sort(object$scores,decreasing=TRUE,index.return=TRUE)$ix
 
     if(length(setdiff(truemodel,ordering))>=1){
-        stop("Argument truemodel must be a subset of ordering!")  
+        stop("Argument truemodel must be a subset of ordering!")
     }
 
     p = length(ordering)
@@ -549,7 +601,7 @@ roc.regRSM = function(object,truemodel,plotit=TRUE,...){
     values = unique(tpr[tpr!=0])
     auc = sum( xs * values )
 
-    if(plotit){           
+    if(plotit){
         plot(fpr,tpr,type="b",main="ROC curve for RSM ordering")
         legend("bottomright",paste("AUC= ",round(auc,4)))
     }else{
